@@ -1,1 +1,13 @@
-# xrb-tipbot
+# RaiBlocks (XRB) Telegram Tipbot
+Welcome to the XRB Tipbot!
+
+## Important information
+Users of the XRB Tipbot should be aware that the link between a Telegram user and their funds in the Tipbot is their username. Please make sure that you withdraw all funds in the Tipbot before changing your username.
+
+If your username is changed you will still be able to recover access to your funds using your recovery key, but there will be nothing preventing another user from taking your old username and accessing your funds.
+
+## Background
+This script is run within a screen instance on a server running a RaiBlocks node and a SQLite database.
+
+More information on running your own RaiBlocks node to support the network can be found here:
+https://github.com/clemahieu/raiblocks/wiki/Docker-node
