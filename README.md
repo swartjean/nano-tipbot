@@ -1,6 +1,8 @@
 # RaiBlocks (XRB) Telegram Tipbot
 Welcome to the XRB Tipbot!
 
+Please note that this is an unofficial project and is not directly affiliated with Telegram in any way.
+
 ## Important information
 Users of the XRB Tipbot should be aware that the link between a Telegram user and their funds in the Tipbot is their username. Please make sure that you withdraw all funds in the Tipbot before changing your username.
 
