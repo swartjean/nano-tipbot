@@ -13,3 +13,6 @@ This script is run within a screen instance on a server running a RaiBlocks node
 
 More information on running your own RaiBlocks node to support the network can be found here:
 https://github.com/clemahieu/raiblocks/wiki/Docker-node
+
+## Acknowledgements
+A large part of this script is based off the work of James Coxon and his xrb_reddit_tipbot. Please go check out his project to find out more: https://github.com/jamescoxon/xrb_reddit_tipbot
