@@ -19,8 +19,10 @@ jobqueue = updater.job_queue
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 # Set up logging file handler
+formatter = logging.Formatter('%(asctime)s - %(message)s')
 handler = logging.FileHandler('xrb_tipbot.log')
 handler.setLevel(logging.INFO)
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # Get the wallet from the local settings
@@ -349,7 +351,7 @@ def contribute(bot, update):
 
 
 def update_price_info(bot, job):
-    print('Updating market')
+    market = coinmarketcap.Market()
     PriceInfo = market.ticker('raiblocks')
 
 
