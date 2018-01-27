@@ -265,7 +265,7 @@ def tip(bot, update):
                             if int(rai_send_amount) <= int(client_balance['amount']):
                                 wallet_command = {'action': 'send', 'wallet': wallet, 'source': client_address, 'destination': recipient_address, 'amount': int(raw_send_amount)}
                                 wallet_output = communicate_wallet(wallet_command)
-                                logger.info('User ' + client_username + ' (address ' + client_address + ') sent user ' + recipient_username + ' address (' + recipient_address + ') XRB ' + send_amount)
+                                logger.info('User ' + client_username + ' (address ' + client_address + ') sent user ' + recipient_username + ' (address ' + recipient_address + ') XRB ' + send_amount)
                                 bot.send_message(chat_id=update.message.chat_id, text='You have successfully tipped @' + recipient_username + ' with XRB ' + send_amount + '\n\n'
                                                                                       'Thank you for using the XRB Tipbot! \n\n'
                                                                                       'Let @' + recipient_username + ' know that you have tipped them by sending them the message below.')
