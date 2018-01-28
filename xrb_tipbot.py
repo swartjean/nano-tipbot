@@ -164,13 +164,15 @@ def balance(bot, update):
 def recover(bot, update):
     # Attempt to fetch the username of the client
     client_username = str(update.message.from_user.username)
+    client_info = check_username(client_username)
+
     if client_username == 'None':
         # If the username is 'None', the client has not set a username and thus cannot register
         send_username_error(bot, update)
-    elif check_username(client_username):
-        # If the user does not exist in the database they must register before checking their balance
+    elif client_info:
+        # If the user already exists in the database, notify them and show them their current recovery key.
         bot.send_message(chat_id=update.message.chat_id, text='Your username is already associated with an address on XRB Tipbot.\n\n'
-                                                              'Please use /balance to check your balance.')
+                                                              'Your recovery key is ' + client_info['recovery_key'])
     else:
         # The client has a username and they are not yet registered, so begin the recovery process
         if len(update.message.text.split(' ')) == 1:
@@ -237,44 +239,60 @@ def tip(bot, update):
                     send_amount = update.message.text.split(' ')[2]
 
                     recipient_info = check_username(recipient_username)
+
                     if not recipient_info:
-                        # If the recipient is not yet registered:
-                        bot.send_message(chat_id=update.message.chat_id, text='The recipient user is not registered on the XRB Tipbot. \n\n'
-                                                                              'Please send them the message below asking them to register and try again.')
-                        bot.send_message(chat_id=update.message.chat_id, text='Dear @' + recipient_username + ',\n\n' +
-                                                                              '@' + client_username + ' would like to tip you XRB ' + send_amount + ' using the XRB Tipbot (@xrb_tipbot). \n\n'
-                                                                              'Please visit @xrb_tipbot and register using /register to create an account. Let @' + client_username + ' know '
-                                                                              'when you have done this so that they can try to tip you again.')
+                        # Flag this recipient as a new recipient
+                        new_recipient = True
+                        # Create an account for the new recipient
+                        localdb = dataset.connect('sqlite:///' + settings.local_db_name)
+                        users_table = localdb['users']
+                        # Create account
+                        wallet_command = {'action': 'account_create', 'wallet': wallet}
+                        wallet_output = communicate_wallet(wallet_command)
+                        address = wallet_output['account']
+                        # Create recovery key (UUID4 token)
+                        recoverykey = str(uuid.uuid4())
+                        # Insert row containing username, account and recovery key into database
+                        logger.info('Registered user ' + recipient_username + ' with address ' + address + ' and recovery key ' + recoverykey)
+                        users_table.insert(dict(user_id=recipient_username, xrb_address=str(address), recovery_key=recoverykey))
+                        # Refresh the recipient_info
+                        recipient_info = check_username(recipient_username)
+
                     else:
-                        # If the recipient username exists:
-                        try:
-                            # Get the address of the client and recipient
-                            client_address = client_info['xrb_address']
-                            recipient_address = recipient_info['xrb_address']
+                        new_recipient = False
 
-                            # Get the balance of the client to ensure that they have enough XRB in their account
-                            wallet_command = {'action': 'account_balance', 'account': client_address}
+                    try:
+                        # Get the address of the client and recipient
+                        client_address = client_info['xrb_address']
+                        recipient_address = recipient_info['xrb_address']
+
+                        # Get the balance of the client to ensure that they have enough XRB in their account
+                        wallet_command = {'action': 'account_balance', 'account': client_address}
+                        wallet_output = communicate_wallet(wallet_command)
+
+                        wallet_command = {'action': 'rai_from_raw', 'amount': int(wallet_output['balance'])}
+                        client_balance = communicate_wallet(wallet_command)
+
+                        rai_send_amount = float(send_amount) * 1000000
+                        raw_send_amount = str(int(rai_send_amount)) + '000000000000000000000000'
+
+                        if int(rai_send_amount) <= int(client_balance['amount']):
+                            wallet_command = {'action': 'send', 'wallet': wallet, 'source': client_address, 'destination': recipient_address, 'amount': int(raw_send_amount)}
                             wallet_output = communicate_wallet(wallet_command)
-
-                            wallet_command = {'action': 'rai_from_raw', 'amount': int(wallet_output['balance'])}
-                            client_balance = communicate_wallet(wallet_command)
-
-                            rai_send_amount = float(send_amount) * 1000000
-                            raw_send_amount = str(int(rai_send_amount)) + '000000000000000000000000'
-
-                            if int(rai_send_amount) <= int(client_balance['amount']):
-                                wallet_command = {'action': 'send', 'wallet': wallet, 'source': client_address, 'destination': recipient_address, 'amount': int(raw_send_amount)}
-                                wallet_output = communicate_wallet(wallet_command)
-                                logger.info('User ' + client_username + ' (address ' + client_address + ') sent user ' + recipient_username + ' (address ' + recipient_address + ') XRB ' + send_amount)
-                                bot.send_message(chat_id=update.message.chat_id, text='You have successfully tipped @' + recipient_username + ' with XRB ' + send_amount + '\n\n'
-                                                                                      'Thank you for using the XRB Tipbot! \n\n'
-                                                                                      'Let @' + recipient_username + ' know that you have tipped them by sending them the message below.')
-                                bot.send_message(chat_id=update.message.chat_id, text=recipient_username + ' has been tipped XRB ' + send_amount + ' using the XRB Tipbot (@xrb_tipbot) courtesy of ' + client_username + '.')
+                            logger.info('User ' + client_username + ' (address ' + client_address + ') sent user ' + recipient_username + ' (address ' + recipient_address + ') XRB ' + send_amount)
+                            bot.send_message(chat_id=update.message.chat_id, text='You have successfully tipped @' + recipient_username + ' with XRB ' + send_amount + '\n\n'
+                                                                                  'Thank you for using the XRB Tipbot! \n\n'
+                                                                                  'Let @' + recipient_username + ' know that you have tipped them by sending them the message below.')
+                            if new_recipient:
+                                bot.send_message(chat_id=update.message.chat_id, text='@' + recipient_username + ' has been tipped XRB ' + send_amount + ' using the XRB Tipbot (@xrb_tipbot) courtesy of @' + client_username + '.\n\n' +
+                                                                                      '@' + recipient_username + ', an account has been created for you on @xrb_tipbot where you can access your funds.')
                             else:
-                                bot.send_message(chat_id=update.message.chat_id, text='Not enough funds to send XRB ' + send_amount + '\n\n'
-                                                                                      'Please use /balance to check your account balance.')
-                        except:
-                            bot.send_message(chat_id=update.message.chat_id, text='Invalid amount entered: ' + send_amount)
+                                bot.send_message(chat_id=update.message.chat_id, text='@' + recipient_username + ' has been tipped XRB ' + send_amount + ' using the XRB Tipbot (@xrb_tipbot) courtesy of @' + client_username + '.')
+                        else:
+                            bot.send_message(chat_id=update.message.chat_id, text='Not enough funds to send XRB ' + send_amount + '\n\n'
+                                                                                  'Please use /balance to check your account balance.')
+                    except:
+                        bot.send_message(chat_id=update.message.chat_id, text='Invalid amount entered: ' + send_amount)
 
 
 def withdraw(bot, update):
